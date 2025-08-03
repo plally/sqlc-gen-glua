@@ -22,7 +22,7 @@ builds:
 archives:
   - formats: [binary]
     name_template: >-
-      {{ .ProjectName }}.{{.Arch}}
+      {{ .ProjectName }}
 
 changelog:
   sort: asc
