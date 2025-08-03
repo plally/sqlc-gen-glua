@@ -8,6 +8,7 @@ import (
 
 type dalData struct {
 	GlobalLuaTable string
+	Filenames      []string
 }
 
 func genDalFiles(req *plugin.GenerateRequest, opts Options, filenames []string) ([]*plugin.File, error) {
