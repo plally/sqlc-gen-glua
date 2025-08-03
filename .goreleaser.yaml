@@ -17,6 +17,7 @@ builds:
       - wasip1
     goarch:
       - wasm
+    main: ./plugin
 
 archives:
   - formats: [tar.gz]
