@@ -32,7 +32,7 @@ changelog:
       - "^test:"
 
 release:
-  body: >-
+  footer: >-
 
     ---
 
@@ -44,5 +44,5 @@ release:
       - name: glua
         wasm: 
           url: https://github.com/plally/sqlc-gen-glua/releases/download/{{ .Tag }}/sqlc-gen-glua.wasm
-          sha256: .Checksum
+          sha256: {{ .Checksum }}
     ```
