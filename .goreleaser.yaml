@@ -43,4 +43,20 @@ release:
 
     ---
 
-    Released by [GoReleaser](https://github.com/goreleaser/goreleaser).
+    Example Usage
+    ```yaml
+    plugins:
+      - name: glua
+        wasm: 
+          url: test
+          sha256: {{ .Checksum }}
+    sql:
+      - engine: "sqlite"
+        queries: "db/queries"
+        schema: "db/migrations"
+        codegen:
+        - plugin: glua
+          out: lua/myaddon/db
+          options:
+            global_lua_table: "MyAddon.DAL"
+    ```
