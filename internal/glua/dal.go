@@ -10,9 +10,10 @@ type dalData struct {
 	GlobalLuaTable string
 }
 
-func genDalFiles(req *plugin.GenerateRequest, opts Options) ([]*plugin.File, error) {
+func genDalFiles(req *plugin.GenerateRequest, opts Options, filenames []string) ([]*plugin.File, error) {
 	data := dalData{
 		GlobalLuaTable: opts.GlobalLuaTable,
+		Filenames:      filenames,
 	}
 
 	var builder strings.Builder

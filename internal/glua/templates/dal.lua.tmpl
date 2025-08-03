@@ -18,9 +18,8 @@ function {{.GlobalLuaTable}}:runQuery(query, ...)
     return result, nil
 end
 
-local files = file.Find("lua/autorun/server/dal/*sql.lua", "LUA")
-for _, fileName in ipairs(files) do
-    include(filePath)
-end
+{{range .Filenames -}}
+include("{{.}}")
+{{end -}}
 
 {{end}}

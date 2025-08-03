@@ -40,10 +40,6 @@ func Generate(ctx context.Context, req *plugin.GenerateRequest) (*plugin.Generat
 	if err != nil {
 		return nil, err
 	}
-	dalFiles, err := genDalFiles(req, opts)
-	if err != nil {
-		return nil, err
-	}
 
 	modelsFiles, err := genModelsFile(req, opts)
 	if err != nil {
@@ -60,11 +56,23 @@ func Generate(ctx context.Context, req *plugin.GenerateRequest) (*plugin.Generat
 		return nil, err
 	}
 
-	files := slices.Concat(queriesFiles, modelsFiles, dalFiles)
+	files := slices.Concat(queriesFiles, modelsFiles)
 	files = append(files, &plugin.File{
 		Name:     "request.json",
 		Contents: reqJson,
 	})
+
+	filenames := make([]string, 0, len(queriesFiles))
+	for _, file := range queriesFiles {
+		filenames = append(filenames, file.Name)
+	}
+
+	dalFiles, err := genDalFiles(req, opts, filenames)
+	if err != nil {
+		return nil, err
+	}
+
+	files = append(files, dalFiles...)
 
 	resp := &plugin.GenerateResponse{
 		Files: files,
