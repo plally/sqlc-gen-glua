@@ -1,0 +1,6 @@
+{{define "luaType"}}
+---@class {{.TypeName}}
+{{range .Fields -}}
+---@field {{.Name}} {{.Type}}
+{{end -}}
+{{end}}

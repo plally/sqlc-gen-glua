@@ -1,0 +1,26 @@
+{{define "dal"}}
+{{.GlobalLuaTable}} = {}
+
+-- This function can be overwritten with your own implementation
+function {{.GlobalLuaTable}}:OnError(err)
+	print("Error running query: " .. err)
+end
+
+---@param query string
+---@param ... any
+---@return any|nil, string|nil
+function {{.GlobalLuaTable}}:runQuery(query, ...)
+    local result = sql.QueryTyped( query, ... )
+    if result == false then
+        local err = sql.LastError()
+        return nil, err
+    end
+    return result, nil
+end
+
+local files = file.Find("lua/autorun/server/dal/*sql.lua", "LUA")
+for _, fileName in ipairs(files) do
+    include(filePath)
+end
+
+{{end}}
