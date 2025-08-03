@@ -20,16 +20,9 @@ builds:
     main: ./plugin
 
 archives:
-  - formats: [tar.gz, binary]
-    # this name template makes the OS and Arch compatible with the results of `uname`.
+  - formats: [binary]
     name_template: >-
-      {{ .ProjectName }}_
-      {{- title .Os }}_
-      {{- if eq .Arch "amd64" }}x86_64
-      {{- else if eq .Arch "386" }}i386
-      {{- else }}{{ .Arch }}{{ end }}
-      {{- if .Arm }}v{{ .Arm }}{{ end }}
-    # use zip for windows archives
+      {{ .ProjectName }}.{{.Arch}}
 
 changelog:
   sort: asc
@@ -39,24 +32,17 @@ changelog:
       - "^test:"
 
 release:
-  footer: >-
+  body: >-
 
     ---
 
     Example Usage
+
+
     ```yaml
     plugins:
       - name: glua
         wasm: 
-          url: {{.ReleaseURL}}
+          url: https://github.com/plally/sqlc-gen-glua/releases/download/{{ .Tag }}/sqlc-gen-glua.wasm
           sha256: .Checksum
-    sql:
-      - engine: "sqlite"
-        queries: "db/queries"
-        schema: "db/migrations"
-        codegen:
-        - plugin: glua
-          out: lua/myaddon/db
-          options:
-            global_lua_table: "MyAddon.DAL"
     ```
