@@ -34,11 +34,14 @@ changelog:
 release:
   footer: >-
 
-    ---
+    ---  
+
+
     Checksum: {{.Checksums}}
 
 
-    Example Usage:
+    Example Usage:  
+
     ```yaml
 
 
