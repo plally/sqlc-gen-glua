@@ -2,8 +2,8 @@
 {{.GlobalLuaTable}} = {}
 
 -- This function can be overwritten with your own implementation
-function {{.GlobalLuaTable}}:OnError(err)
-	print("Error running query: " .. err)
+function {{.GlobalLuaTable}}:OnError(err, query)
+	print("Error running query: " .. (query or "unknown"), "\n", err)
 end
 
 ---@param query string
@@ -13,6 +13,8 @@ function {{.GlobalLuaTable}}:runQuery(query, ...)
     local result = sql.QueryTyped( query, ... )
     if result == false then
         local err = sql.LastError()
+
+        self:OnError(err, query)
         return nil, err
     end
     return result, nil
