@@ -48,8 +48,8 @@ release:
     plugins:
       - name: glua
         wasm: 
-          url: test
-          sha256: {{ .Checksum }}
+          url: {{.ReleaseURL}}
+          sha256: .Checksum
     sql:
       - engine: "sqlite"
         queries: "db/queries"
