@@ -35,14 +35,16 @@ release:
   footer: >-
 
     ---
+    Checksum: {{.Checksums}}
 
-    Example Usage
 
-
+    Example Usage:
     ```yaml
+
+
     plugins:
       - name: glua
         wasm: 
           url: https://github.com/plally/sqlc-gen-glua/releases/download/{{ .Tag }}/sqlc-gen-glua.wasm
-          sha256: {{ .Checksums }}
+          sha256: <place checksum here>
     ```
