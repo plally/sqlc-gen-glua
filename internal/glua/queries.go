@@ -12,6 +12,7 @@ type queryTemplateData struct {
 	Name       string
 	Params     []queryTemplateParam
 	ParamsType string
+	ParamCount int
 
 	ReturnType     string
 	ReturnMappings map[string]string
@@ -189,6 +190,8 @@ func GenQuery(builder *strings.Builder, req *plugin.GenerateRequest, q *plugin.Q
 			NotNull:     p.GetColumn().GetNotNull(),
 		})
 	}
+
+	data.ParamCount = len(data.Params)
 
 	return rootTemplate.ExecuteTemplate(builder, "queryFunc", data)
 }

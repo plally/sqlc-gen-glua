@@ -63,15 +63,22 @@ end
 ---@param query string
 ---@param args any[]
 ---@param callback fun( results: any[], err: string|nil )
-function libsql:Query(query, args, callback)
+function libsql:Query(query, args, argCount, callback)
     local requestArgs = {}
-    for _, arg in ipairs(args) do
+    for i = 1, argCount do
+        local arg = args[i]
         if type(arg) == "number" and math.floor(arg) == arg then
             table.insert(requestArgs, { type = "integer", value = tostring(arg) })
         elseif type(arg) == "number" and math.floor(arg) ~= arg then
             table.insert(requestArgs, { type = "float", value = arg })
         elseif type(arg) == "string" then
             table.insert(requestArgs, { type = "text", value = arg })
+        elseif arg == nil then
+            table.insert(requestArgs, { type = "null", value = nil })
+        else
+            ErrorNoHalt("Unsupported argument type: " .. type(arg) .. " for value: " .. tostring(arg))
+            callback({}, "Unsupported argument type: " .. type(arg))
+            return
         end
     end
 
@@ -85,7 +92,7 @@ function libsql:Query(query, args, callback)
     }
     table.insert(self.requestQueue, {
         request = req,
-        callback = callback or function() end,
+        callback = callback,
     })
     self:addHook()
 end
@@ -121,7 +128,6 @@ function libsql:doRequests()
     })
     table.insert(callbacks, function() end) -- close has no callback
 
-    file.Write("libsql_request.json", util.TableToJSON(req, true))
     self.requestQueue = {}
     HTTP {
         url = self.uri .. "/v2/pipeline",
@@ -160,33 +166,32 @@ function libsql:doRequests()
 
             for i, result in ipairs(results) do
                 callback = callbacks[i]
-                local result = results[1]
                 if result.type == "error" then
                     callback({}, result.error.code .. ": " .. result.error.message)
-                    return
-                end
-
-                local out = {}
-                for _, row in ipairs(result.response.result.rows) do
-                    local newRow = {}
-                    for i, col in ipairs(result.response.result.cols) do
-                        local value = row[i]
-                        if value.type == "integer" then
-                            newRow[col.name] = tonumber(value.value)
-                        elseif value.type == "float" then
-                            newRow[col.name] = value.value
-                        elseif value.type == "text" then
-                            newRow[col.name] = value.value
-                        elseif value.type == "null" then
-                            newRow[col.name] = nil
-                        else
-                            ErrorNoHalt("Unknown value type: " .. tostring(value.type) .. " for column: " .. col.name)
-                            newRow[col.name] = value.value -- fallback for other types
+                elseif result.response.type == "execute" then
+                    local out = {}
+                    for _, row in ipairs(result.response.result.rows) do
+                        local newRow = {}
+                        for i, col in ipairs(result.response.result.cols) do
+                            local value = row[i]
+                            if value.type == "integer" then
+                                newRow[col.name] = tonumber(value.value)
+                            elseif value.type == "float" then
+                                newRow[col.name] = value.value
+                            elseif value.type == "text" then
+                                newRow[col.name] = value.value
+                            elseif value.type == "null" then
+                                newRow[col.name] = nil
+                            else
+                                ErrorNoHalt("Unknown value type: " ..
+                                    tostring(value.type) .. " for column: " .. col.name)
+                                newRow[col.name] = value.value -- fallback for other types
+                            end
                         end
+                        table.insert(out, newRow)
                     end
-                    table.insert(out, newRow)
+                    callback(out, nil)
                 end
-                callback(out, nil)
             end
         end,
         failed = function(reason)

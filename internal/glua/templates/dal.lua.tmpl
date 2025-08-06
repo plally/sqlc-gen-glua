@@ -13,8 +13,8 @@ end
 ---@param args any[]
 ---@param callback fun(result:any|nil, err:string|nil)
 ---@return any|nil, string|nil
-function {{.GlobalLuaTable}}:runQuery(query, args, callback)
-    self.currentDriver:Query(query, args, function(result, err)
+function {{.GlobalLuaTable}}:runQuery(query, args, argCount, callback)
+    self.currentDriver:Query(query, args, argCount, function(result, err)
         if err then
             self:OnError(err, query)
         end

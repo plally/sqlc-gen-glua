@@ -6,12 +6,16 @@
 function {{.GlobalLuaTable}}:{{.Name}}({{- if .Params }}params, {{end -}}callback)
     callback = callback or function() end
 
+    local argCount = {{.ParamCount}}
+
 	local query = [[
 	{{.Query}}
 	]]
 {{- range .Params -}}
 	{{- if .IsSqlcSlice}}
 	query = string.Replace(query, "/*SLICE:{{.Name}}*/?", string.sub(repeatString(",?", #params.{{.Name}}), 2))
+    argCount = argCount + #params.{{.Name}} - 1
+
 	{{- end -}}
 {{- end}}
 
@@ -21,7 +25,7 @@ function {{.GlobalLuaTable}}:{{.Name}}({{- if .Params }}params, {{end -}}callbac
         {{- else -}}params.{{.Name}},
         {{- end -}}
 {{end}} 
-    }, function(rows, err)
+    }, argCount, function(rows, err)
         if err then
             callback(nil, err)
             return
