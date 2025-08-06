@@ -25,5 +25,7 @@ func genDalFiles(req *plugin.GenerateRequest, opts Options, filenames []string) 
 
 	return []*plugin.File{
 		{Contents: []byte(builder.String()), Name: "dal.lua"},
+		{Contents: mustReadFile("templates/drivers/gmod.lua"), Name: "drivers/gmod.lua"},
+		{Contents: mustReadFile("templates/drivers/libsql.lua"), Name: "drivers/libsql.lua"},
 	}, nil
 }

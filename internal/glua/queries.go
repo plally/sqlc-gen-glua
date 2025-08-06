@@ -142,13 +142,13 @@ func GenQuery(builder *strings.Builder, req *plugin.GenerateRequest, q *plugin.Q
 		return fmt.Errorf("unsupported query command: %s", q.GetCmd())
 	}
 
-	err := genParamsType(builder, data.ParamsType, q.GetParams())
+	err := genParamsType(builder, data.ParamsType, q.GetParams(), opts)
 	if err != nil {
 		return fmt.Errorf("error generating params type for query %s: %w", q.GetName(), err)
 	}
 
 	if data.ReturnType != "nil" && tableTypeName == "" {
-		err := genReturnType(builder, data.ReturnType, q.GetColumns())
+		err := genReturnType(builder, data.ReturnType, q.GetColumns(), opts)
 		if err != nil {
 			return fmt.Errorf("error generating return type for query %s: %w", q.GetName(), err)
 		}
@@ -157,7 +157,13 @@ func GenQuery(builder *strings.Builder, req *plugin.GenerateRequest, q *plugin.Q
 	noMappings := true
 	for _, column := range q.GetColumns() {
 		oldName := column.GetName()
-		newName := SnakeToCamel(oldName)
+
+		newName := oldName
+		if opts.Rename[oldName] != "" {
+			newName = opts.Rename[oldName]
+		} else {
+			newName = SnakeToCamel(oldName)
+		}
 		if oldName != newName {
 			noMappings = false
 		}
@@ -168,9 +174,17 @@ func GenQuery(builder *strings.Builder, req *plugin.GenerateRequest, q *plugin.Q
 		data.ReturnMappings = nil
 	}
 
+	// TODO should i use p.Number
 	for _, p := range q.GetParams() {
+		name := p.GetColumn().GetName()
+		if opts.Rename[name] != "" {
+			name = opts.Rename[name]
+		} else {
+			name = SnakeToCamel(name)
+		}
+
 		data.Params = append(data.Params, queryTemplateParam{
-			Name:        SnakeToCamel(p.GetColumn().GetName()),
+			Name:        name,
 			IsSqlcSlice: p.GetColumn().GetIsSqlcSlice(),
 			NotNull:     p.GetColumn().GetNotNull(),
 		})
@@ -179,9 +193,14 @@ func GenQuery(builder *strings.Builder, req *plugin.GenerateRequest, q *plugin.Q
 	return rootTemplate.ExecuteTemplate(builder, "queryFunc", data)
 }
 
-func genReturnType(builder *strings.Builder, name string, columns []*plugin.Column) error {
+func genReturnType(builder *strings.Builder, name string, columns []*plugin.Column, opts Options) error {
 
-	fields, err := columnsToLuaTypeFields(columns, SnakeToCamel)
+	fields, err := columnsToLuaTypeFields(columns, func(name string) string {
+		if opts.Rename[name] != "" {
+			return opts.Rename[name]
+		}
+		return SnakeToCamel(name)
+	})
 	if err != nil {
 		return fmt.Errorf("error converting columns to lua type fields for table %s: %w", name, err)
 	}
@@ -194,7 +213,7 @@ func genReturnType(builder *strings.Builder, name string, columns []*plugin.Colu
 	return rootTemplate.ExecuteTemplate(builder, "luaType", data)
 }
 
-func genParamsType(builder *strings.Builder, name string, params []*plugin.Parameter) error {
+func genParamsType(builder *strings.Builder, name string, params []*plugin.Parameter, opts Options) error {
 	if len(params) == 0 {
 		return nil
 	}
@@ -204,7 +223,12 @@ func genParamsType(builder *strings.Builder, name string, params []*plugin.Param
 		columns = append(columns, p.GetColumn())
 	}
 
-	fields, err := columnsToLuaTypeFields(columns, SnakeToCamel)
+	fields, err := columnsToLuaTypeFields(columns, func(name string) string {
+		if opts.Rename[name] != "" {
+			return opts.Rename[name]
+		}
+		return SnakeToCamel(name)
+	})
 	if err != nil {
 		return fmt.Errorf("error converting columns to lua type fields for table %s: %w", name, err)
 	}

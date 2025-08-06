@@ -14,7 +14,8 @@ type generatorState struct {
 }
 
 type Options struct {
-	GlobalLuaTable string `json:"global_lua_table"`
+	GlobalLuaTable string            `json:"global_lua_table"`
+	Rename         map[string]string `json:"rename,omitempty"`
 }
 
 func getOptions(req *plugin.GenerateRequest) (Options, error) {
@@ -31,6 +32,10 @@ func getOptions(req *plugin.GenerateRequest) (Options, error) {
 
 	if opts.GlobalLuaTable == "" {
 		return Options{}, fmt.Errorf("global_lua_table option is required %v", string(options))
+	}
+
+	if opts.Rename == nil {
+		opts.Rename = make(map[string]string)
 	}
 
 	return opts, nil

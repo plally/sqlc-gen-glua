@@ -1,5 +1,8 @@
 {{define "dal"}}
-{{.GlobalLuaTable}} = {}
+{{.GlobalLuaTable}} = {
+    drivers = {},
+    currentDriver = nil,
+}
 
 -- This function can be overwritten with your own implementation
 function {{.GlobalLuaTable}}:OnError(err, query)
@@ -7,21 +10,38 @@ function {{.GlobalLuaTable}}:OnError(err, query)
 end
 
 ---@param query string
----@param ... any
+---@param args any[]
+---@param callback fun(result:any|nil, err:string|nil)
 ---@return any|nil, string|nil
-function {{.GlobalLuaTable}}:runQuery(query, ...)
-    local result = sql.QueryTyped( query, ... )
-    if result == false then
-        local err = sql.LastError()
+function {{.GlobalLuaTable}}:runQuery(query, args, callback)
+    self.currentDriver:Query(query, args, function(result, err)
+        if err then
+            self:OnError(err, query)
+        end
 
-        self:OnError(err, query)
-        return nil, err
-    end
-    return result, nil
+        callback(result, err)
+    end)
+end
+
+---@param name string
+---@param opts table
+function GMAudit.DAL:UseDriver(name, opts)
+    self.currentDriver = self.drivers[name].constructor(opts)
+end
+
+---@param name string
+---@param driver table
+function GMAudit.DAL:RegisterDriver(name, driver)
+    self.drivers[name] = driver
 end
 
 {{range .Filenames -}}
 include("{{.}}")
 {{end -}}
 
+include("drivers/gmod.lua")
+include("drivers/libsql.lua")
+
 {{end}}
+
+

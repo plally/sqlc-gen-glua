@@ -11,65 +11,61 @@ function {{.GlobalLuaTable}}:{{.Name}}({{- if .Params }}params, {{end -}}callbac
 	]]
 {{- range .Params -}}
 	{{- if .IsSqlcSlice}}
-	query = string.Replace(query, "/*SLICE:{{.Name}}*/?", repeatString(",?", #params.{{.Name}}-1))
+	query = string.Replace(query, "/*SLICE:{{.Name}}*/?", string.sub(repeatString(",?", #params.{{.Name}}), 2))
 	{{- end -}}
 {{- end}}
 
-{{- if eq .ReturnType "nil" }}
-	local _, err = self:runQuery(query
-{{- else }}
-	local rows, err = self:runQuery(query
-{{- end}}
-{{- range .Params -}}
-	{{- if .IsSqlcSlice}},
-	unpack(params.{{.Name}})
-	{{- else -}},
-	params.{{.Name}}
-	{{- end}}
-{{- end -}}
+	self:runQuery(query, {
+{{- range .Params}}
+        {{if .IsSqlcSlice}}unpack(params.{{.Name}}),
+        {{- else -}}params.{{.Name}},
+        {{- end -}}
+{{end}} 
+    }, function(rows, err)
+        if err then
+            callback(nil, err)
+            return
+        end
+
+        {{- if eq .ReturnType "nil" }}
+        callback(nil, nil)
+        {{- else if .ReturnsSlice }}
+        {{- if .ReturnMappings }}
+
+        local results = {}
+        for _, row in ipairs(rows) do
+            local result = {
+            {{- range $oldName, $newName := .ReturnMappings }}
+                ["{{ $newName }}"] = row["{{ $oldName }}"],
+            {{- end }}
+            }
+            table.insert(results, result)
+        end
+        callback(results, nil)
+        {{- else }}
+        callback(rows, nil)
+        {{- end }}
+        {{- else }}
+        {{- if .ReturnMappings }}
+        if #rows == 0 then
+            callback(nil, nil)
+            return
+        end
+        local row = rows[1]
+        local result = {
+            {{- range $oldName, $newName := .ReturnMappings }}
+            ["{{ $newName }}"] = row["{{ $oldName }}"],
+            {{- end }}
+        }
+        if callback then
+            callback(result, nil)
+        end
+        {{- else }}
+        callback(rows[1], nil)
+        {{- end }}
+        {{- end }}
+    end
 )
 
-	if err then
-		callback(nil, err)
-		return
-	end
-
-	{{- if eq .ReturnType "nil" }}
-	callback(nil, nil)
-	{{- else if .ReturnsSlice }}
-	{{- if .ReturnMappings }}
-
-	local results = {}
-	for _, row in ipairs(rows) do
-		local result = {
-		{{- range $oldName, $newName := .ReturnMappings }}
-            ["{{ $newName }}"] = row["{{ $oldName }}"],
-		{{- end }}
-        }
-		table.insert(results, result)
-	end
-	callback(results, nil)
-	{{- else }}
-	callback(rows, nil)
-	{{- end }}
-	{{- else }}
-	{{- if .ReturnMappings }}
-    if #rows == 0 then
-        callback(nil, nil)
-        return
-    end
-    local row = rows[1]
-	local result = {
-		{{- range $oldName, $newName := .ReturnMappings }}
-		["{{ $newName }}"] = row["{{ $oldName }}"],
-		{{- end }}
-    }
-    if callback then
-        callback(result, nil)
-    end
-	{{- else }}
-	callback(rows[1], nil)
-	{{- end }}
-	{{- end }}
 end
 {{end}}

@@ -16,7 +16,7 @@ func genModelsFile(req *plugin.GenerateRequest, opts Options) ([]*plugin.File, e
 	var builder strings.Builder
 	for _, schema := range catalog.Schemas {
 		for _, table := range schema.Tables {
-			err := genTable(&builder, table)
+			err := genTable(&builder, table, opts)
 			if err != nil {
 				return nil, fmt.Errorf("error generating table %s: %w", table.GetRel().GetName(), err)
 			}
@@ -28,12 +28,17 @@ func genModelsFile(req *plugin.GenerateRequest, opts Options) ([]*plugin.File, e
 	}, nil
 }
 
-func genTable(builder *strings.Builder, table *plugin.Table) error {
+func genTable(builder *strings.Builder, table *plugin.Table, opts Options) error {
 	name := table.GetRel().GetName()
 	typeName := strings.Title(strings.ReplaceAll(name, "_", " "))
 	typeName = strings.ReplaceAll(typeName, " ", "")
 
-	fields, err := columnsToLuaTypeFields(table.GetColumns(), SnakeToCamel)
+	fields, err := columnsToLuaTypeFields(table.GetColumns(), func(name string) string {
+		if opts.Rename[name] != "" {
+			return opts.Rename[name]
+		}
+		return SnakeToCamel(name)
+	})
 	if err != nil {
 		return fmt.Errorf("error converting columns to lua type fields for table %s: %w", name, err)
 	}
@@ -50,6 +55,7 @@ var luaTypeMappings = map[string]string{
 	"TEXT":    "string",
 	"INTEGER": "number",
 	"integer": "number",
+	"any":     "any",
 }
 
 func columnsToLuaTypeFields(columns []*plugin.Column, nameModifier func(string) string) ([]luaTypeField, error) {
