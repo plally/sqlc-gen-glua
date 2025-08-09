@@ -72,7 +72,7 @@ function libsql:Query(query, args, argCount, callback)
         elseif type(arg) == "number" and math.floor(arg) ~= arg then
             table.insert(requestArgs, { type = "float", value = arg })
         elseif type(arg) == "string" then
-            table.insert(requestArgs, { type = "text", value = arg })
+            table.insert(requestArgs, { type = "text", value = utf8.force(arg) })
         elseif arg == nil then
             table.insert(requestArgs, { type = "null", value = nil })
         else
