@@ -11,6 +11,7 @@ type queryTemplateData struct {
 	Query      string
 	Name       string
 	Params     []queryTemplateParam
+	Comments   []string
 	ParamsType string
 	ParamCount int
 
@@ -84,6 +85,8 @@ func GenQuery(builder *strings.Builder, req *plugin.GenerateRequest, q *plugin.Q
 		Params:         make([]queryTemplateParam, 0, len(q.GetParams())),
 		ParamsType:     fmt.Sprintf("%sParams", strings.Title(strings.ReplaceAll(q.GetName(), "_", " "))),
 		ReturnMappings: make(map[string]string),
+
+		Comments: q.GetComments(),
 
 		GlobalLuaTable: opts.GlobalLuaTable,
 	}

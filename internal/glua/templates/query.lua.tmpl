@@ -1,4 +1,7 @@
 {{define "queryFunc"}}
+{{range .Comments}}
+-- {{ . }}
+{{- end }}
 {{- if .Params}}
 ---@param params {{.ParamsType}}
 {{- end}}
