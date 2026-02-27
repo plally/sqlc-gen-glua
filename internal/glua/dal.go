@@ -1,8 +1,6 @@
 package glua
 
 import (
-	"strings"
-
 	"github.com/sqlc-dev/plugin-sdk-go/plugin"
 )
 
@@ -17,15 +15,27 @@ func genDalFiles(req *plugin.GenerateRequest, opts Options, filenames []string) 
 		Filenames:      filenames,
 	}
 
-	var builder strings.Builder
-	err := rootTemplate.ExecuteTemplate(&builder, "dal", data)
+	var files []*plugin.File
+	dalContent, err := templateFile("dal", data)
 	if err != nil {
 		return nil, err
 	}
 
-	return []*plugin.File{
-		{Contents: []byte(builder.String()), Name: "dal.lua"},
-		{Contents: mustReadFile("templates/drivers/gmod.lua"), Name: "drivers/gmod.lua"},
-		{Contents: mustReadFile("templates/drivers/libsql.lua"), Name: "drivers/libsql.lua"},
-	}, nil
+	files = append(files, &plugin.File{
+		Contents: dalContent,
+		Name:     "dal.lua",
+	})
+	drivers := []string{"gmod", "libsql"}
+	for _, driver := range drivers {
+		driverContent, err := templateFile("drivers/"+driver, data)
+		if err != nil {
+			return nil, err
+		}
+		files = append(files, &plugin.File{
+			Contents: driverContent,
+			Name:     "drivers/" + driver + ".lua",
+		})
+	}
+
+	return files, nil
 }

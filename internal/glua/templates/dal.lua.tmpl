@@ -25,13 +25,13 @@ end
 
 ---@param name string
 ---@param opts table
-function GMAudit.DAL:UseDriver(name, opts)
+function {{.GlobalLuaTable}}.DAL:UseDriver(name, opts)
     self.currentDriver = self.drivers[name].constructor(opts)
 end
 
 ---@param name string
 ---@param driver table
-function GMAudit.DAL:RegisterDriver(name, driver)
+function {{.GlobalLuaTable}}.DAL:RegisterDriver(name, driver)
     self.drivers[name] = driver
 end
 
