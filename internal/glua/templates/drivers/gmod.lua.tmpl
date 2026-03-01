@@ -1,3 +1,4 @@
+{{define "drivers/gmod"}}
 local gmod = {}
 gmod.__index = gmod
 
@@ -21,6 +22,7 @@ function gmod:Query(query, args, callback)
     callback(rows, nil)
 end
 
-GMAudit.DAL:RegisterDriver("gmod", {
+{{.GlobalLuaTable}}.DAL:RegisterDriver("gmod", {
     constructor = newGMOD,
 })
+{{end}}

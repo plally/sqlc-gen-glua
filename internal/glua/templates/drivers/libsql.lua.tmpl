@@ -1,3 +1,4 @@
+{{define "drivers/libsql"}}
 ---@class LibSQLDriver
 ---@field uri string
 ---@field token string
@@ -202,6 +203,7 @@ function libsql:doRequests()
     }
 end
 
-GMAudit.DAL:RegisterDriver("libsql", {
+{{.GlobalLuaTable}}.DAL:RegisterDriver("libsql", {
     constructor = newLibSQL,
 })
+{{end}}
