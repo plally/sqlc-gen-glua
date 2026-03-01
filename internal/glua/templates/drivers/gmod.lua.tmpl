@@ -22,7 +22,7 @@ function gmod:Query(query, args, callback)
     callback(rows, nil)
 end
 
-{{.GlobalLuaTable}}.DAL:RegisterDriver("gmod", {
+{{.GlobalLuaTable}}:RegisterDriver("gmod", {
     constructor = newGMOD,
 })
 {{end}}

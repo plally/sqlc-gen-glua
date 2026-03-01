@@ -203,7 +203,7 @@ function libsql:doRequests()
     }
 end
 
-{{.GlobalLuaTable}}.DAL:RegisterDriver("libsql", {
+{{.GlobalLuaTable}}:RegisterDriver("libsql", {
     constructor = newLibSQL,
 })
 {{end}}
