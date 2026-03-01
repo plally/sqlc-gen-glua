@@ -25,13 +25,13 @@ end
 
 ---@param name string
 ---@param opts table
-function {{.GlobalLuaTable}}.DAL:UseDriver(name, opts)
+function {{.GlobalLuaTable}}:UseDriver(name, opts)
     self.currentDriver = self.drivers[name].constructor(opts)
 end
 
 ---@param name string
 ---@param driver table
-function {{.GlobalLuaTable}}.DAL:RegisterDriver(name, driver)
+function {{.GlobalLuaTable}}:RegisterDriver(name, driver)
     self.drivers[name] = driver
 end
 
