@@ -11,7 +11,7 @@ end
 ---@param args any[]
 ---@param callback fun( results: any[], err: string|nil )
 function gmod:Query(query, args, argCount, callback)
-    local rows = sql.QueryTyped(query, unpack(args or {}))
+    local rows = sql.QueryTyped(query, unpack(args or {}, 1, argCount or 0))
     if rows == false then
         local err = sql.LastError()
         callback({}, err)
