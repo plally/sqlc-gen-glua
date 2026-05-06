@@ -14,8 +14,9 @@ type generatorState struct {
 }
 
 type Options struct {
-	GlobalLuaTable string            `json:"global_lua_table"`
-	Rename         map[string]string `json:"rename,omitempty"`
+	GlobalLuaTable    string            `json:"global_lua_table"`
+	Rename            map[string]string `json:"rename,omitempty"`
+	IncludeMigrations bool              `json:"include_migrations,omitempty"`
 }
 
 func getOptions(req *plugin.GenerateRequest) (Options, error) {

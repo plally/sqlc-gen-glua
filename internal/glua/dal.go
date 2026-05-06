@@ -5,14 +5,16 @@ import (
 )
 
 type dalData struct {
-	GlobalLuaTable string
-	Filenames      []string
+	GlobalLuaTable    string
+	Filenames         []string
+	IncludeMigrations bool
 }
 
 func genDalFiles(req *plugin.GenerateRequest, opts Options, filenames []string) ([]*plugin.File, error) {
 	data := dalData{
-		GlobalLuaTable: opts.GlobalLuaTable,
-		Filenames:      filenames,
+		GlobalLuaTable:    opts.GlobalLuaTable,
+		Filenames:         filenames,
+		IncludeMigrations: opts.IncludeMigrations,
 	}
 
 	var files []*plugin.File
@@ -34,6 +36,17 @@ func genDalFiles(req *plugin.GenerateRequest, opts Options, filenames []string) 
 		files = append(files, &plugin.File{
 			Contents: driverContent,
 			Name:     "drivers/" + driver + ".lua",
+		})
+	}
+
+	if opts.IncludeMigrations {
+		migrationsContent, err := templateFile("migrations", data)
+		if err != nil {
+			return nil, err
+		}
+		files = append(files, &plugin.File{
+			Contents: migrationsContent,
+			Name:     "migrations.lua",
 		})
 	}
 

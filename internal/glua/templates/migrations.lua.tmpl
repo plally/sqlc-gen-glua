@@ -1,0 +1,179 @@
+{{define "migrations"}}
+---@class MigrationParser
+---@field parseFilename fun(filename: string): number? Extracts the migration version from the filename
+---@field parseContent fun(content: string): string[] Extracts individual SQL statements from the migration
+
+---@type table<string, MigrationParser>
+local migrationParsers = {}
+
+migrationParsers.goose = {
+    parseFilename = function(filename)
+        return tonumber(filename:match("^(%d+)_"))
+    end,
+    parseContent = function(content)
+        local statements = {}
+        local inUp = false
+        local inStatement = false
+        local currentLines = {}
+
+        for line in (content .. "\n"):gmatch("([^\n]*)\n") do
+            if line:match("^%-%- %+goose Up") then
+                inUp = true
+            elseif line:match("^%-%- %+goose Down") then
+                inUp = false
+            elseif inUp then
+                if line:match("^%-%- %+goose StatementBegin") then
+                    inStatement = true
+                    currentLines = {}
+                elseif line:match("^%-%- %+goose StatementEnd") then
+                    if #currentLines > 0 then
+                        local block = table.concat(currentLines, "\n")
+                        for stmt in block:gmatch("([^;]+)") do
+                            local trimmed = stmt:match("^%s*(.-)%s*$")
+                            if #trimmed > 0 then
+                                table.insert(statements, trimmed)
+                            end
+                        end
+                    end
+                    currentLines = {}
+                    inStatement = false
+                elseif inStatement then
+                    table.insert(currentLines, line)
+                end
+            end
+        end
+
+        return statements
+    end
+}
+
+function {{.GlobalLuaTable}}:createVersionTable(tableName, callback)
+    self:runQuery([[
+        CREATE TABLE IF NOT EXISTS ]] .. tableName .. [[ (
+            version INTEGER PRIMARY KEY NOT NULL,
+            applied_at INTEGER DEFAULT (strftime('%s', 'now'))
+        )
+    ]], {}, 0, function(_, err)
+        callback(err)
+    end)
+end
+
+function {{.GlobalLuaTable}}:getCurrentVersion(tableName, callback)
+    self:runQuery("SELECT version FROM " .. tableName .. " ORDER BY version DESC LIMIT 1", {}, 0, function(result, err)
+        if err then
+            callback(nil, err)
+            return
+        end
+        local version = (result and #result > 0) and tonumber(result[1].version) or 0
+        callback(version, nil)
+    end)
+end
+
+---@class MigrateOpts
+---@field path string Path to the migrations directory, relative to the game root
+---@field appName string Used to name the version tracking table, e.g. "cfc_achievements"
+---@field migrationLanguage string Parser to use, e.g. "goose"
+
+---Runs SQL migrations from a directory against the database.
+---@param opts MigrateOpts
+---@param callback fun(err: string|nil)
+function {{.GlobalLuaTable}}:Migrate(opts, callback)
+    callback = callback or function() end
+
+    assert(opts.path, "{{.GlobalLuaTable}}.Migrate: opts.path is required")
+    assert(opts.appName, "{{.GlobalLuaTable}}.Migrate: opts.appName is required")
+    assert(opts.migrationLanguage, "{{.GlobalLuaTable}}.Migrate: opts.migrationLanguage is required")
+
+    local parser = migrationParsers[opts.migrationLanguage]
+    assert(parser, "{{.GlobalLuaTable}}.Migrate: unknown migrationLanguage '" .. opts.migrationLanguage .. "'")
+
+    local tableName = opts.appName .. "_migrations"
+
+    self:createVersionTable(tableName, function(err)
+        if err then
+            callback(err)
+            return
+        end
+
+        local files = file.Find(opts.path .. "/*.sql", "GAME")
+        if not files or #files == 0 then
+            callback(nil)
+            return
+        end
+
+        local migrationFiles = {}
+
+        for _, filename in ipairs(files) do
+            local version = parser.parseFilename(filename)
+            assert(version, "Failed to parse migration version from filename: " .. filename)
+
+            table.insert(migrationFiles, { filename = filename, version = version })
+        end
+
+        table.sort(migrationFiles, function(a, b) return a.version < b.version end)
+
+        self:getCurrentVersion(tableName, function(currentVersion, err)
+            if err then
+                callback(err)
+                return
+            end
+
+            local pending = {}
+            for _, migration in ipairs(migrationFiles) do
+                if migration.version > currentVersion then
+                    table.insert(pending, migration)
+                end
+            end
+
+            local function applyNext(index)
+                if index > #pending then
+                    callback(nil)
+                    return
+                end
+
+                local migration = pending[index]
+                local content = file.Read(opts.path .. "/" .. migration.filename, "GAME")
+                local statements = parser.parseContent(content)
+
+                -- version insert runs inside the transaction so it only records on success
+                table.insert(statements, "INSERT INTO " .. tableName .. " (version) VALUES (" .. migration.version .. ")")
+
+                local function runNext(stmtIndex)
+                    if stmtIndex > #statements then
+                        self:runQuery("COMMIT", {}, 0, function(_, err)
+                            if err then
+                                callback("COMMIT failed for migration '" .. migration.filename .. "': " .. err)
+                                return
+                            end
+                            print("[{{.GlobalLuaTable}}] Applied migration: " .. migration.filename)
+                            applyNext(index + 1)
+                        end)
+                        return
+                    end
+
+                    self:runQuery(statements[stmtIndex], {}, 0, function(_, err)
+                        if err then
+                            self:runQuery("ROLLBACK", {}, 0, function()
+                                callback("Migration failed (" .. migration.filename .. "): " .. err)
+                            end)
+                            return
+                        end
+                        runNext(stmtIndex + 1)
+                    end)
+                end
+
+                print("[{{.GlobalLuaTable}}] Applying migration: " .. migration.filename)
+                self:runQuery("BEGIN", {}, 0, function(_, err)
+                    if err then
+                        callback("BEGIN failed for migration '" .. migration.filename .. "': " .. err)
+                        return
+                    end
+                    runNext(1)
+                end)
+            end
+
+            applyNext(1)
+        end)
+    end)
+end
+{{end}}

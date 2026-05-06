@@ -41,7 +41,9 @@ include("{{.}}")
 
 include("drivers/gmod.lua")
 include("drivers/libsql.lua")
-
+{{if .IncludeMigrations}}
+include("migrations.lua")
+{{end}}
 {{end}}
 
 
