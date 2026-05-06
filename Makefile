@@ -1,4 +1,4 @@
-.PHONY: build test bin/sqlc-gen-go bin/sqlc-gen-go.wasm all bin
+.PHONY: build test bin/sqlc-gen-go bin/sqlc-gen-go.wasm all bin release
 
 build:
 	go build ./...
@@ -16,3 +16,6 @@ bin/sqlc-gen-glua.wasm: bin/sqlc-gen-glua
 
 bin:
 	mkdir -p bin
+
+release:
+	GITHUB_TOKEN=$(shell gh auth token) goreleaser release --clean
