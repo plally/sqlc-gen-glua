@@ -33,9 +33,11 @@ sql:
 |---|---|---|---|
 | `global_lua_table` | string | yes | The global Lua table the DAL is attached to, e.g. `"MyAddon.DAL"` |
 | `rename` | map | no | Override generated field names, e.g. `{"user_id": "userId"}` |
-| `include_migrations` | bool | no | Generate a `migrations.lua` file with a migration runner (default: `false`) |
+| `include_migrations` | bool | no | Generate a `migrations.lua` file with a migration runner (default: `false`) — **unstable, API may change** |
 
 ## Migrations
+
+> **Unstable:** the migrations feature is under active development. The generated API may change between releases.
 
 Setting `include_migrations: true` generates a `migrations.lua` file alongside the DAL. It is automatically included from `dal.lua` and adds a `:Migrate()` method to your DAL table.
 

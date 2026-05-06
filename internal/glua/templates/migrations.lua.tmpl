@@ -15,33 +15,49 @@ migrationParsers.goose = {
         local inUp = false
         local inStatement = false
         local currentLines = {}
+        local pendingLines = {}
+
+        local function flushPending()
+            if #pendingLines == 0 then return end
+            local block = table.concat(pendingLines, "\n")
+            for stmt in (block .. ";"):gmatch("([^;]+);") do
+                local trimmed = stmt:match("^%s*(.-)%s*$")
+                if #trimmed > 0 then
+                    table.insert(statements, trimmed)
+                end
+            end
+            pendingLines = {}
+        end
 
         for line in (content .. "\n"):gmatch("([^\n]*)\n") do
             if line:match("^%-%- %+goose Up") then
                 inUp = true
             elseif line:match("^%-%- %+goose Down") then
+                flushPending()
                 inUp = false
             elseif inUp then
                 if line:match("^%-%- %+goose StatementBegin") then
+                    flushPending()
                     inStatement = true
                     currentLines = {}
                 elseif line:match("^%-%- %+goose StatementEnd") then
                     if #currentLines > 0 then
                         local block = table.concat(currentLines, "\n")
-                        for stmt in block:gmatch("([^;]+)") do
-                            local trimmed = stmt:match("^%s*(.-)%s*$")
-                            if #trimmed > 0 then
-                                table.insert(statements, trimmed)
-                            end
+                        local trimmed = block:match("^%s*(.-)%s*$")
+                        if #trimmed > 0 then
+                            table.insert(statements, trimmed)
                         end
                     end
                     currentLines = {}
                     inStatement = false
                 elseif inStatement then
                     table.insert(currentLines, line)
+                else
+                    table.insert(pendingLines, line)
                 end
             end
         end
+        flushPending()
 
         return statements
     end
