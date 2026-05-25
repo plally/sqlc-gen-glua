@@ -1,4 +1,5 @@
 {{define "queryFunc"}}
+---@class {{.GlobalLuaTable}}Queries
 {{range .Comments}}
 -- {{ . }}
 {{- end }}
@@ -6,7 +7,7 @@
 ---@param params {{.ParamsType}}
 {{- end}}
 ---@param callback fun(result: {{.ReturnType}}?, err: string|nil)
-function {{.GlobalLuaTable}}:{{.Name}}({{- if .Params }}params, {{end -}}callback)
+function {{.GlobalLuaTable}}Queries:{{.Name}}({{- if .Params }}params, {{end -}}callback)
     callback = callback or function() end
 
     local argCount = {{.ParamCount}}

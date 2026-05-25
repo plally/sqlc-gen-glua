@@ -1,4 +1,5 @@
 {{define "dal"}}
+---@class {{.GlobalLuaTable}} : {{.GlobalLuaTable}}Queries
 {{.GlobalLuaTable}} = {
     drivers = {},
     currentDriver = nil,
@@ -23,6 +24,35 @@ function {{.GlobalLuaTable}}:runQuery(query, args, argCount, callback)
     end)
 end
 
+function {{.GlobalLuaTable}}:runQueryAsync(query, args, argCount)
+    local co = coroutine.running()
+    local fired, savedResult, savedErr = false, nil, nil
+
+    self:runQuery(query, args, argCount, function(result, err)
+        fired = true
+        savedResult, savedErr = result, err
+        if coroutine.status(co) == "suspended" then
+            coroutine.resume(co, result, err)
+        end
+    end)
+
+    if fired then
+        return savedResult, savedErr
+    end
+    return coroutine.yield()
+end
+
+function {{.GlobalLuaTable}}:WithAsyncDB(callback)
+	local db = {}
+	setmetatable(db, {__index = {{.GlobalLuaTable}}Queries})
+	db.runQuery = function(_, query, args, argCount, cb)
+		self:runQueryAsync(query, args, argCount)
+	end
+
+	local co = coroutine.create(function() callback(db) end)
+	coroutine.resume(co)
+end 
+
 ---@param name string
 ---@param opts table
 function {{.GlobalLuaTable}}:UseDriver(name, opts)
@@ -35,6 +65,10 @@ function {{.GlobalLuaTable}}:RegisterDriver(name, driver)
     self.drivers[name] = driver
 end
 
+---@class {{.GlobalLuaTable}}Queries
+{{.GlobalLuaTable}}Queries = {}
+{{.GlobalLuaTable}}Queries.__index = {{.GlobalLuaTable}}Queries
+
 {{range .Filenames -}}
 include("{{.}}")
 {{end -}}
@@ -44,6 +78,8 @@ include("drivers/libsql.lua")
 {{if .IncludeMigrations}}
 include("migrations.lua")
 {{end}}
+
+setmetatable({{.GlobalLuaTable}}, {__index = {{.GlobalLuaTable}}Queries})
 {{end}}
 
 
