@@ -76,4 +76,27 @@ function {{.GlobalLuaTable}}Queries:{{.Name}}({{- if .Params }}params, {{end -}}
 )
 
 end
+
+---@class {{.GlobalLuaTable}}AsyncQueries : {{.GlobalLuaTable}}Queries
+{{- range .Comments}}
+-- {{ . }}
+{{- end }}
+{{- if .Params}}
+---@param params {{.ParamsType}}
+{{- end}}
+---@return {{.ReturnType}}?, string|nil
+function {{.GlobalLuaTable}}AsyncQueries:{{.Name}}({{- if .Params }}params{{end -}})
+    local co = coroutine.running()
+    local fired, r, e = false, nil, nil
+    {{.GlobalLuaTable}}Queries.{{.Name}}(self, {{- if .Params }}params, {{end -}}function(result, err)
+        fired = true
+        r, e = result, err
+        if coroutine.status(co) == "suspended" then
+            local ok, resumeErr = coroutine.resume(co, result, err)
+            if not ok then error(resumeErr, 0) end
+        end
+    end)
+    if fired then return r, e end
+    return coroutine.yield()
+end
 {{end}}
