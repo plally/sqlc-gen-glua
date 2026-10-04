@@ -118,6 +118,49 @@ function libsql:addHook()
     end)
 end
 
+---@param result LibSQLResponseResult
+---@param callback fun( results: any[], err: string|nil )
+local function dispatchResult(result, callback)
+    if result.type == "error" then
+        local err = result.error or {}
+        callback({}, tostring(err.code) .. ": " .. tostring(err.message))
+        return
+    end
+
+    local response = result.response
+    if response and response.type == "execute" then
+        local data = response.result or {}
+        local cols = data.cols or {}
+        local out = {}
+        for _, row in ipairs(data.rows or {}) do
+            local newRow = {}
+            for i, col in ipairs(cols) do
+                local value = row[i] or {}
+                if value.type == "integer" then
+                    newRow[col.name] = tonumber(value.value)
+                elseif value.type == "float" then
+                    newRow[col.name] = value.value
+                elseif value.type == "text" then
+                    newRow[col.name] = value.value
+                elseif value.type == "null" then
+                    newRow[col.name] = nil
+                else
+                    ErrorNoHalt("Unknown value type: " ..
+                        tostring(value.type) .. " for column: " .. tostring(col.name))
+                    newRow[col.name] = value.value -- fallback for other types
+                end
+            end
+            table.insert(out, newRow)
+        end
+        callback(out, nil)
+    elseif response and response.type == "close" then
+        callback({}, nil)
+    else
+        callback({}, "unexpected result type: " .. tostring(result.type) ..
+            "/" .. tostring(response and response.type))
+    end
+end
+
 function libsql:doRequests()
     ---@type LibSQLRequest
     local req = {
@@ -174,33 +217,22 @@ function libsql:doRequests()
                 return
             end
 
+            -- Each dispatch is isolated: a throw here (malformed result, or an error raised by the
+            -- caller's own callback) must not abort the loop and strand the remaining callbacks.
             for i, result in ipairs(results) do
-                callback = callbacks[i]
-                if result.type == "error" then
-                    callback({}, result.error.code .. ": " .. result.error.message)
-                elseif result.response.type == "execute" then
-                    local out = {}
-                    for _, row in ipairs(result.response.result.rows) do
-                        local newRow = {}
-                        for i, col in ipairs(result.response.result.cols) do
-                            local value = row[i]
-                            if value.type == "integer" then
-                                newRow[col.name] = tonumber(value.value)
-                            elseif value.type == "float" then
-                                newRow[col.name] = value.value
-                            elseif value.type == "text" then
-                                newRow[col.name] = value.value
-                            elseif value.type == "null" then
-                                newRow[col.name] = nil
-                            else
-                                ErrorNoHalt("Unknown value type: " ..
-                                    tostring(value.type) .. " for column: " .. col.name)
-                                newRow[col.name] = value.value -- fallback for other types
-                            end
-                        end
-                        table.insert(out, newRow)
-                    end
-                    callback(out, nil)
+                local callback = callbacks[i]
+                local fired = false
+                local function resolve(rows, err)
+                    if fired then return end
+                    fired = true
+                    callback(rows, err)
+                end
+
+                local ok, dispatchErr = pcall(dispatchResult, result, resolve)
+                if not ok then
+                    ErrorNoHalt("libsql dispatch error: " .. tostring(dispatchErr) .. "\n")
+                    -- No-op if the callback already ran and the error came from inside it.
+                    resolve({}, "libsql dispatch error: " .. tostring(dispatchErr))
                 end
             end
         end,
