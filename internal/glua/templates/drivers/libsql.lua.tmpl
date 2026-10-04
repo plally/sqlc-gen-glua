@@ -190,7 +190,7 @@ function libsql:doRequests()
             Authorization = "Bearer " .. self.token,
             ["Content-Type"] = "application/json",
         },
-        timeout = 500,
+        timeout = 30,
         success = function(code, body, headers)
             if code < 200 or code >= 300 then
                 for _, callback in ipairs(callbacks) do
