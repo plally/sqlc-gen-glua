@@ -195,7 +195,7 @@ function libsql:doRequests()
             if code < 200 or code >= 300 then
                 for _, callback in ipairs(callbacks) do
                     -- TODO error parsing for bad request errors
-                    callback({}, "HTTP error: " .. tostring(code))
+                    callback({}, "HTTP error: " .. tostring(code) .. " body: " .. tostring(body))
                 end
                 return
             end
